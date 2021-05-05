@@ -26,7 +26,7 @@ func main() {
 		" 2. Create a Client")
 
 	// Input promt
-	fmt.Println(">>")
+	fmt.Print(">>")
 
 	// Get user input
 	fmt.Scanf("%d\n", &choice)

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"io"
 	"net"
@@ -13,9 +14,15 @@ import (
 )
 
 type server struct {
-	clients  map[string]net.Conn
+	clients map[string]*clientDetails
+
 	password string
 	address  string
+}
+
+type clientDetails struct {
+	connection net.Conn
+	publicKey  rsa.PublicKey
 }
 
 func Server(pass string, address string) *server {
@@ -25,7 +32,7 @@ func Server(pass string, address string) *server {
 	}
 
 	return &server{
-		clients:  make(map[string]net.Conn),
+		clients:  make(map[string]*clientDetails),
 		password: pass,
 		address:  address,
 	}
@@ -69,12 +76,11 @@ func (ser *server) listenForMessages(ctx context.Context, conn net.Conn, usernam
 			case "0":
 				wg.Add(1)
 				m.RLock()
-				for i, cli := range ser.clients {
-					fmt.Println(i)
-					if strings.Compare(i, username) != 0 {
-						if _, err1 := cli.Write([]byte(message)); err1 != nil {
-							str := "Unable to broadcast message to" + string(i)
-							fmt.Printf("Unable to broadcast message to %s from %s", i, username)
+				for cliName, cliDetails := range ser.clients {
+					if strings.Compare(cliName, username) != 0 {
+						if _, err1 := cliDetails.connection.Read([]byte(message)); err1 != nil {
+							str := "Unable to broadcast message to " + string(cliName)
+							fmt.Printf("Unable to broadcast message to %s from %s", cliName, username)
 							conn.Write([]byte(utility.Padd(str)))
 						}
 					}
@@ -86,12 +92,12 @@ func (ser *server) listenForMessages(ctx context.Context, conn net.Conn, usernam
 				wg.Add(1)
 				m.RLock()
 				v := 0
-				for i, cli := range ser.clients {
-					if strings.Compare(i, args[1]) == 0 {
+				for cliName, cliDetail := range ser.clients {
+					if strings.Compare(cliName, args[1]) == 0 {
 						v = 1
-						if _, err1 := cli.Write([]byte(utility.Padd(sm))); err1 != nil {
-							str := "Unable to send message to" + string(i)
-							fmt.Printf("Unable to send message to %s from %s", i, username)
+						if _, err1 := cliDetail.connection.Write([]byte(utility.Padd(sm))); err1 != nil {
+							str := "Unable to send message to " + string(cliName)
+							fmt.Printf("Unable to send message to %s from %s", cliName, username)
 							conn.Write([]byte(utility.Padd(str)))
 							v = 0
 						} else {
@@ -140,7 +146,7 @@ func (ser *server) handleClient(ctx context.Context, conn net.Conn, m *sync.RWMu
 			if _, found := ser.clients[args[2]]; found == false {
 				wg.Add(1)
 				m.Lock()
-				ser.clients[args[2]] = conn
+				ser.clients[args[2]] = &clientDetails{connection: conn}
 				fmt.Printf("\n%s has logged in\n", args[2])
 				m.Unlock()
 				wg.Done()

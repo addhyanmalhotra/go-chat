@@ -1,12 +1,10 @@
 package client
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strings"
 
 	"github.com/addhyanmalhotra/GoChat/utility"
@@ -83,29 +81,25 @@ func (cli *client) listenForServerMessages(ctx context.Context, conn net.Conn, f
 func (cli *client) getClientMessage(recMsg chan string) {
 	fMsg := ""
 	var ch int
-	var m string
+	var m, line string
 	fmt.Printf("\rChoose among the following (enter 1/2/3):\n\t1. PM\n\t2. Broadcast\n\t3. Terminate\n\r>> ")
-	fmt.Scan(&ch)
-	in := bufio.NewReader(os.Stdin)
+	fmt.Scanf("%d\n", &ch)
 
 	switch ch {
 	case 1:
 		fmt.Printf("\rName of user to send message:\n\r>> ")
-		fmt.Scan(&m)
+		fmt.Scanf("%s\n", &m)
 		fMsg = "1~" + m
 		fmt.Printf("\r\nMessage:\n>> ")
-		line, err := in.ReadString('\n')
-		utility.CheckError(err)
+		fmt.Scanln(&line)
 		fMsg = fMsg + "~" + line
 	case 2:
 		fmt.Printf("\r\nMessage:\n>> ")
-		line, err := in.ReadString('\n')
-		utility.CheckError(err)
+		fmt.Scanln(&line)
 		fMsg = "0~" + "~" + cli.Username + "~" + line
 	case 3:
 		fmt.Printf("\r\nReason:\n>> ")
-		line, err := in.ReadString('\n')
-		utility.CheckError(err)
+		fmt.Scanln(&line)
 		fMsg = "2~" + "~" + line + "~"
 	default:
 		fmt.Printf("\nChoose right option: ")
